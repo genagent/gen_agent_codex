@@ -83,7 +83,7 @@ code required.
 
 `CodexWrapper.Exec.stream/2` and `CodexWrapper.ExecResume.stream/2` were
 historically broken against `codex-cli >= 0.118` due to a Port+stdin hang
-(see [codex_wrapper#37](https://github.com/joshrotenberg/codex_wrapper_ex/issues/37),
+(see [codex_wrapper#37](https://github.com/genagent/codex_wrapper_ex/issues/37),
 fixed in codex_wrapper 0.2.2). Even after the fix, this backend still
 uses the non-streaming `Exec.execute_json/2` path because:
 
