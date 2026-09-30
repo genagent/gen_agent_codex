@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/genagent/gen_agent_codex/compare/v0.1.1...v0.1.2) (2026-09-30)
+
+
+### Bug Fixes
+
+* stream Codex turns and preserve resume options ([#13](https://github.com/genagent/gen_agent_codex/issues/13)) ([42a7553](https://github.com/genagent/gen_agent_codex/commit/42a75533d07f7b0682cad94b434d5013e7cc6bdb))
+
 ## [0.1.1](https://github.com/genagent/gen_agent_codex/compare/v0.1.0...v0.1.1) (2026-04-11)
 
 
