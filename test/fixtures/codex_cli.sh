@@ -12,6 +12,9 @@ printf '%s\n' "$@" > "$fixture_dir/$mode.args"
 printf '%s\n' "${GEN_AGENT_FIXTURE-unset}" > "$fixture_dir/$mode.env"
 
 case "${*}" in
+  *typed-fail*)
+    fixture_mode=typed_failure
+    ;;
   *fail*)
     fixture_mode=failure
     ;;
@@ -24,6 +27,11 @@ case "${*}" in
 esac
 
 case "$fixture_mode" in
+  typed_failure)
+    printf '%s\n' '{"type":"thread.started","thread_id":"fixture-thread"}'
+    printf '%s\n' '{"type":"turn.failed","error":{"code":"fixture_error","message":"typed fixture failure"}}'
+    ;;
+
   failure)
     printf '%s\n' '{"type":"thread.started","thread_id":"fixture-thread"}'
     printf '%s\n' '{"type":"turn.failed","error":"fixture failure"}'
