@@ -146,6 +146,15 @@ defmodule GenAgent.Backends.CodexExecutableConformanceTest do
     assert "fail" == List.last(args(context.directory, :fresh))
   end
 
+  test "structured CLI failure reaches GenAgent without flattening its fields", context do
+    name = start_agent(context)
+
+    assert {:error, %{"code" => "fixture_error", "message" => "typed fixture failure"}} =
+             GenAgent.ask(name, "typed-fail")
+
+    assert [%{"code" => "fixture_error"}] = GenAgent.status(name).agent_state.errors
+  end
+
   for action <- [:interrupt, :watchdog, :stop, :kill] do
     @tag action: action
     test "#{action} stops the BEAM task on the executable streaming path", context do
