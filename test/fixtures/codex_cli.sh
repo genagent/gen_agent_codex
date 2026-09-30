@@ -9,6 +9,7 @@ if [ "${2:-}" = "resume" ]; then
 fi
 
 printf '%s\n' "$@" > "$fixture_dir/$mode.args"
+printf '%s\n' "${GEN_AGENT_FIXTURE-unset}" > "$fixture_dir/$mode.env"
 
 case "${*}" in
   *fail*)
@@ -32,7 +33,7 @@ case "$fixture_mode" in
     printf '%s\n' '{"type":"thread.started","thread_id":"fixture-thread"}'
     printf '%s\n' '{"type":"item.completed","item":{"type":"agent_message","text":"partial"}}'
     sleep 2
-    printf '%s\n' '{"type":"turn.completed"}'
+    printf '%s\n' '{"type":"turn.completed"}' 2>/dev/null || true
     ;;
 
   success)

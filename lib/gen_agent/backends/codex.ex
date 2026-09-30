@@ -2,7 +2,7 @@ defmodule GenAgent.Backends.Codex do
   @moduledoc """
   `GenAgent.Backend` implementation backed by `CodexWrapper`.
 
-  CodexWrapper 0.5.1 streams NDJSON while closing CLI stdin. This
+  CodexWrapper 0.5.2 streams NDJSON while closing CLI stdin. This
   backend forwards translated events as they arrive, so
   `handle_stream_event/2` can observe progress during a turn.
 
@@ -14,6 +14,12 @@ defmodule GenAgent.Backends.Codex do
   injects it into the `:result` event as `session_id`. This backend's
   `update_session/2` then records it on the session struct, and the
   next turn is dispatched via `ExecResume` with that id.
+
+  `terminate_session/1` has no native process to close. GenAgent cancels
+  its prompt task on interrupt, watchdog, stop, or agent death, but the
+  default Port runner closes pipes without guaranteeing that the CLI and
+  its subprocesses have exited. Choose a runner with process-group
+  termination when OS-level settlement is required.
 
   ## Options accepted by `start_session/1`
 

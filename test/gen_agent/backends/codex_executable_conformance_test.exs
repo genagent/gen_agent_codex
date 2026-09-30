@@ -89,7 +89,8 @@ defmodule GenAgent.Backends.CodexExecutableConformanceTest do
         config_overrides: ["mcp_servers.fixture.enabled=false"],
         enabled_features: ["fixture_feature"],
         disabled_features: ["other_feature"],
-        images: ["/fixture/image.png"]
+        images: ["/fixture/image.png"],
+        env: [{"GEN_AGENT_FIXTURE", "configured"}]
       )
 
     assert {:ok, first} = GenAgent.ask(name, "first prompt")
@@ -119,6 +120,7 @@ defmodule GenAgent.Backends.CodexExecutableConformanceTest do
     assert "fixture-model" in fresh_args
     assert "read-only" in fresh_args
     assert "first prompt" == List.last(fresh_args)
+    assert File.read!(Path.join(context.directory, "fresh.env")) == "configured\n"
 
     assert {:ok, second} = GenAgent.ask(name, "follow-up prompt")
     assert second.text == "fixture-resume"
@@ -134,6 +136,7 @@ defmodule GenAgent.Backends.CodexExecutableConformanceTest do
     assert "follow-up prompt" == List.last(resume_args)
     assert Enum.any?(resume_args, &String.contains?(&1, "approval_policy"))
     assert Enum.any?(resume_args, &String.contains?(&1, "mcp_servers.fixture.enabled=false"))
+    assert File.read!(Path.join(context.directory, "resume.env")) == "configured\n"
   end
 
   test "terminal failure from the executable reaches GenAgent as an error", context do
