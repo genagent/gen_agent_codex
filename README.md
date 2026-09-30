@@ -79,23 +79,14 @@ code required.
 # r2.text == "42"
 ```
 
-## Why this backend uses `exec_json` instead of streaming
+## Streaming
 
-`CodexWrapper.Exec.stream/2` and `CodexWrapper.ExecResume.stream/2` were
-historically broken against `codex-cli >= 0.118` due to a Port+stdin hang
-(see [codex_wrapper#37](https://github.com/genagent/codex_wrapper_ex/issues/37),
-fixed in codex_wrapper 0.2.2). Even after the fix, this backend still
-uses the non-streaming `Exec.execute_json/2` path because:
-
-- GenAgent's prompt task blocks on the whole turn anyway -- the caller
-  waits for a full `GenAgent.Response` regardless.
-- `handle_stream_event/2` still fires for every event in arrival order,
-  just all at once when `exec_json` returns instead of progressively.
-- The path is simpler and has fewer moving parts.
-
-If you need real-time streaming events before the turn completes, you
-can provide your own `:exec_fn` that calls `Exec.stream/2` (which now
-works) and wrap it in something that yields events over time.
+The backend uses `CodexWrapper.Exec.stream/2` and
+`CodexWrapper.ExecResume.stream/2`. CodexWrapper 0.5.1 closes CLI stdin,
+so the earlier Port startup hang is fixed. `handle_stream_event/2`
+receives normalized events as they arrive while `ask/3` returns the
+completed turn. `thread.started` supplies the ID used by the next
+turn's `exec resume` command.
 
 ## Backend options
 
@@ -106,12 +97,19 @@ works) and wrap it in something that yields events over time.
 **Exec:**
 - `:model`, `:sandbox`, `:approval_policy`, `:full_auto`,
   `:dangerously_bypass_approvals_and_sandbox`, `:skip_git_repo_check`,
-  `:ephemeral`, `:cd`, `:add_dirs`, `:search`, `:output_schema`,
+  `:ephemeral`,
   `:config_overrides`, `:enabled_features`, `:disabled_features`,
   `:images`
 
+These settings are forwarded on fresh and resumed turns. Sandbox and
+approval policy become supported `-c` overrides on resume.
+`:working_dir` / `:cwd` remains the subprocess directory on both turns.
+Options that the resume command cannot preserve (`:cd`, `:add_dirs`,
+`:search`, `:output_schema`) fail at session startup with
+`{:error, {:unsupported_resume_option, option}}`.
+
 **Backend-only:**
-- `:exec_fn` -- a 2-arity function `(prompt, session) -> {:ok, [events]} | {:error, term()}`
+- `:exec_fn` -- a 2-arity function `(prompt, session) -> {:ok, enumerable} | {:error, term()}`
   that replaces the default `Exec`/`ExecResume` dispatch. Intended for tests.
 
 Codex has no equivalent of Claude's `--system-prompt`; if you need
@@ -132,13 +130,18 @@ Codex CLI's NDJSON output is translated into `GenAgent.Event` values by
 | `item.completed` (`agent_message`) | `:text` |
 | `item.completed` (`tool_call`) | `:tool_use` |
 | `item.completed` (`tool_result`) | `:tool_result` |
+| `item.completed` (`mcp_tool_call`, `command_execution`, `file_change`) | `:tool_use` + `:tool_result`, carrying the complete item including ID, status and output |
 | `turn.completed` | `:usage` + terminal `:result` (with captured `thread_id` as `session_id`) |
 | `turn.failed` / `error` | terminal `:error` |
 | anything else | filtered |
 
 Unlike Claude, Codex emits `thread_id` in the **first** event of a turn,
-not the terminal one. The translator does a first pass to extract it and
-injects it into the `:result` event emitted at the end.
+not the terminal one. The streaming translator retains it and injects
+it into the `:result` event emitted at the end. `item.started` and
+`item.updated` are ignored; completed items are reported once. Unknown
+item categories are filtered. A stream that ends without a terminal
+event returns `:no_terminal_event`; the wrapper stream API does not
+report the subprocess exit code.
 
 ## Testing
 

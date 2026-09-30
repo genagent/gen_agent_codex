@@ -20,7 +20,7 @@ defmodule GenAgent.Backends.CodexIntegrationTest do
     use GenAgent
 
     defmodule State do
-      defstruct responses: []
+      defstruct responses: [], stream_events: [], observer: nil
     end
 
     @impl true
@@ -35,12 +35,18 @@ defmodule GenAgent.Backends.CodexIntegrationTest do
           :working_dir
         ])
 
-      {:ok, backend_opts, %State{}}
+      {:ok, backend_opts, %State{observer: opts[:observer]}}
     end
 
     @impl true
     def handle_response(_ref, response, %State{} = state) do
       {:noreply, %{state | responses: state.responses ++ [response]}}
+    end
+
+    @impl true
+    def handle_stream_event(event, %State{} = state) do
+      if state.observer, do: send(state.observer, {:stream_event, event.kind})
+      %{state | stream_events: state.stream_events ++ [event]}
     end
   end
 
@@ -156,6 +162,73 @@ defmodule GenAgent.Backends.CodexIntegrationTest do
       name = start_codex_agent(exec_fn)
 
       assert {:error, "sandbox violation"} = GenAgent.ask(name, "ouch")
+    end
+
+    test "parsed action items reach stream callback in order" do
+      lines = [
+        ~s({"type":"thread.started","thread_id":"t-mcp"}),
+        ~s({"type":"item.started","item":{"type":"mcp_tool_call","id":"call-2","status":"in_progress"}}),
+        ~s({"type":"item.completed","item":{"type":"mcp_tool_call","id":"call-2","server":"fixture","tool":"read","arguments":{},"result":{"content":[]},"status":"completed"}}),
+        ~s({"type":"item.completed","item":{"type":"agent_message","text":"done"}}),
+        ~s({"type":"turn.completed","usage":{"input_tokens":3,"output_tokens":2}})
+      ]
+
+      exec_fn = fn _prompt, _session ->
+        {:ok,
+         Stream.map(lines, fn line ->
+           {:ok, parsed} = JsonLineEvent.parse(line)
+           parsed
+         end)}
+      end
+
+      name = start_codex_agent(exec_fn)
+      assert {:ok, response} = GenAgent.ask(name, "read")
+      assert response.text == "done"
+      assert response.session_id == "t-mcp"
+
+      assert Enum.map(response.events, & &1.kind) ==
+               [:tool_use, :tool_result, :text, :usage, :result]
+
+      assert Enum.map(GenAgent.status(name).agent_state.stream_events, & &1.kind) ==
+               [:tool_use, :tool_result, :text, :usage, :result]
+    end
+
+    test "stream callbacks observe text before the terminal event arrives" do
+      parent = self()
+
+      exec_fn = fn _prompt, _session ->
+        {:ok,
+         Stream.resource(
+           fn -> :start end,
+           fn
+             :start ->
+               {[
+                  event("thread.started", %{"thread_id" => "t-live"}),
+                  event("item.completed", %{
+                    "item" => %{"type" => "agent_message", "text" => "early"}
+                  })
+                ], :waiting}
+
+             :waiting ->
+               send(parent, {:terminal_waiting, self()})
+
+               receive do
+                 :complete -> {[event("turn.completed", %{})], :done}
+               end
+
+             :done ->
+               {:halt, :done}
+           end,
+           fn _ -> :ok end
+         )}
+      end
+
+      name = start_codex_agent(exec_fn, observer: parent)
+      caller = Task.async(fn -> GenAgent.ask(name, "go") end)
+      assert_receive {:stream_event, :text}
+      assert_receive {:terminal_waiting, task_pid}
+      send(task_pid, :complete)
+      assert {:ok, %{text: "early", session_id: "t-live"}} = Task.await(caller)
     end
   end
 end

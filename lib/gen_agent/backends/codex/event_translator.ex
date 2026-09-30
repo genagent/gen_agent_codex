@@ -1,16 +1,9 @@
 defmodule GenAgent.Backends.Codex.EventTranslator do
   @moduledoc """
-  Translates a list of `CodexWrapper.JsonLineEvent` values (the output
-  of a single Codex turn) into a list of `GenAgent.Event` values.
-
-  Unlike the Claude translator, this module works on the **whole turn
-  at once** because the Codex backend does not use streaming: it calls
-  `CodexWrapper.Exec.execute_json/2` (or its resume equivalent), which
-  returns the full event list after the CLI has exited. This lets the
-  translator do a stateful first pass to extract the `thread_id` (which
-  the Codex CLI emits in its first `thread.started` event, not in the
-  terminal event) and inject it into the `:result` event emitted at the
-  end.
+  Translates `CodexWrapper.JsonLineEvent` values from one Codex turn
+  into `GenAgent.Event` values. `translate_stream/1` preserves arrival
+  order and remembers the `thread_id` reported by `thread.started`,
+  adding it to the terminal `:result` as `session_id`.
 
   ## Event mapping
 
@@ -23,6 +16,11 @@ defmodule GenAgent.Backends.Codex.EventTranslator do
     * `item.completed` with `item.type == "tool_call"` or similar --
       emits a `:tool_use` event. (Exact shape depends on what Codex
       surfaces; we pass the raw item through in `:data`.)
+    * `item.completed` with `mcp_tool_call`, `command_execution`, or
+      `file_change` emits `:tool_use` and `:tool_result` with the full
+      item in both events. This retains IDs, arguments, outputs and
+      completion status. `item.started`/`item.updated` are ignored so
+      each action is counted once.
     * `turn.completed` -- emits a `:usage` event (if token counts are
       present) followed by a terminal `:result` event carrying the
       captured `thread_id` as `session_id`.
@@ -43,10 +41,21 @@ defmodule GenAgent.Backends.Codex.EventTranslator do
   """
   @spec translate([JsonLineEvent.t()]) :: [Event.t()]
   def translate(events) when is_list(events) do
-    thread_id = extract_thread_id(events)
+    events |> translate_stream() |> Enum.to_list()
+  end
 
-    events
-    |> Enum.flat_map(&translate_one(&1, thread_id))
+  @doc "Translate events as they arrive while retaining the thread ID for the terminal event."
+  @spec translate_stream(Enumerable.t()) :: Enumerable.t()
+  def translate_stream(events) do
+    Stream.transform(events, nil, fn event, thread_id ->
+      thread_id =
+        case event do
+          %JsonLineEvent{event_type: "thread.started", data: %{"thread_id" => id}} -> id
+          _ -> thread_id
+        end
+
+      {translate_one(event, thread_id), thread_id}
+    end)
   end
 
   # ---------------------------------------------------------------------------
@@ -120,18 +129,16 @@ defmodule GenAgent.Backends.Codex.EventTranslator do
     [Event.new(:tool_result, item)]
   end
 
+  defp translate_item(%{"type" => type} = item)
+       when type in ["mcp_tool_call", "command_execution", "file_change"] do
+    [Event.new(:tool_use, item), Event.new(:tool_result, item)]
+  end
+
   defp translate_item(_), do: []
 
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
-
-  defp extract_thread_id(events) do
-    Enum.find_value(events, fn
-      %JsonLineEvent{event_type: "thread.started", data: %{"thread_id" => tid}} -> tid
-      _ -> nil
-    end)
-  end
 
   defp extract_usage(%{"usage" => %{} = usage}) do
     input = usage["input_tokens"]
