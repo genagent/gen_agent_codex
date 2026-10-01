@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/genagent/gen_agent_codex/compare/v0.1.2...v0.2.0) (2026-10-01)
+
+
+### Features
+
+* preserve output schema across Codex turns ([#19](https://github.com/genagent/gen_agent_codex/issues/19)) ([c84417d](https://github.com/genagent/gen_agent_codex/commit/c84417dc13bcfae2643fbdabd5412eab4539e26a))
+
 ## [0.1.2](https://github.com/genagent/gen_agent_codex/compare/v0.1.1...v0.1.2) (2026-09-30)
 
 
