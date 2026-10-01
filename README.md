@@ -21,8 +21,8 @@ The `codex` CLI must be installed and on your `PATH`. See the
 ```elixir
 def deps do
   [
-    {:gen_agent, "~> 0.2.0"},
-    {:gen_agent_codex, "~> 0.1.0"}
+    {:gen_agent, "~> 0.3.0"},
+    {:gen_agent_codex, "~> 0.2.0"}
   ]
 end
 ```
