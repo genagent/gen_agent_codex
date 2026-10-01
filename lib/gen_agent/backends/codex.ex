@@ -2,7 +2,7 @@ defmodule GenAgent.Backends.Codex do
   @moduledoc """
   `GenAgent.Backend` implementation backed by `CodexWrapper`.
 
-  CodexWrapper 0.5.2 streams NDJSON while closing CLI stdin. This
+  CodexWrapper 0.5.3 streams NDJSON while closing CLI stdin. This
   backend forwards translated events as they arrive, so
   `handle_stream_event/2` can observe progress during a turn.
 
@@ -34,10 +34,10 @@ defmodule GenAgent.Backends.Codex do
       `:dangerously_bypass_approvals_and_sandbox`, `:skip_git_repo_check`,
       `:ephemeral`,
       `:config_overrides`, `:enabled_features`, `:disabled_features`,
-      `:images`
+      `:images`, `:output_schema`
 
   Options that cannot be preserved on `exec resume` (`:cd`,
-  `:add_dirs`, `:search`, `:output_schema`) are rejected by
+  `:add_dirs`, `:search`) are rejected by
   `start_session/1`. Use `:working_dir` / `:cwd` for a directory that
   persists across turns. Session options are translated into supported
   resume arguments; `:sandbox` and `:approval_policy` use config
@@ -71,7 +71,8 @@ defmodule GenAgent.Backends.Codex do
     :config_overrides,
     :enabled_features,
     :disabled_features,
-    :images
+    :images,
+    :output_schema
   ]
 
   defstruct [
@@ -186,6 +187,9 @@ defmodule GenAgent.Backends.Codex do
       {:images, v}, e ->
         Enum.reduce(v, e, &Exec.image(&2, &1))
 
+      {:output_schema, v}, e ->
+        Exec.output_schema(e, v)
+
       _other, e ->
         e
     end)
@@ -228,6 +232,9 @@ defmodule GenAgent.Backends.Codex do
 
         {:images, values}, r ->
           Enum.reduce(values, r, &ExecResume.image(&2, &1))
+
+        {:output_schema, value}, r ->
+          ExecResume.output_schema(r, value)
 
         _other, r ->
           r
