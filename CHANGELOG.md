@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/genagent/gen_agent_codex/compare/v0.2.0...v0.2.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* support GenAgent 0.3.0 ([#21](https://github.com/genagent/gen_agent_codex/issues/21)) ([60ad407](https://github.com/genagent/gen_agent_codex/commit/60ad407847714c5bea3ecaad86ee4e180fecc004))
+
 ## [0.2.0](https://github.com/genagent/gen_agent_codex/compare/v0.1.2...v0.2.0) (2026-10-01)
 
 
