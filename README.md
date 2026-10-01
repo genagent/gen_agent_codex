@@ -99,13 +99,13 @@ turn's `exec resume` command.
   `:dangerously_bypass_approvals_and_sandbox`, `:skip_git_repo_check`,
   `:ephemeral`,
   `:config_overrides`, `:enabled_features`, `:disabled_features`,
-  `:images`
+  `:images`, `:output_schema`
 
 These settings are forwarded on fresh and resumed turns. Sandbox and
 approval policy become supported `-c` overrides on resume.
 `:working_dir` / `:cwd` remains the subprocess directory on both turns.
 Options that the resume command cannot preserve (`:cd`, `:add_dirs`,
-`:search`, `:output_schema`) fail at session startup with
+`:search`) fail at session startup with
 `{:error, {:unsupported_resume_option, option}}`.
 
 **Backend-only:**

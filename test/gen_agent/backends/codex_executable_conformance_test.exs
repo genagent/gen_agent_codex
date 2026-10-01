@@ -90,6 +90,7 @@ defmodule GenAgent.Backends.CodexExecutableConformanceTest do
         enabled_features: ["fixture_feature"],
         disabled_features: ["other_feature"],
         images: ["/fixture/image.png"],
+        output_schema: "/fixture/response.json",
         env: [{"GEN_AGENT_FIXTURE", "configured"}]
       )
 
@@ -120,6 +121,10 @@ defmodule GenAgent.Backends.CodexExecutableConformanceTest do
     assert "fixture-model" in fresh_args
     assert "read-only" in fresh_args
     assert "first prompt" == List.last(fresh_args)
+
+    assert Enum.chunk_every(fresh_args, 2, 1, :discard)
+           |> Enum.member?(["--output-schema", "/fixture/response.json"])
+
     assert File.read!(Path.join(context.directory, "fresh.env")) == "configured\n"
 
     assert {:ok, second} = GenAgent.ask(name, "follow-up prompt")
@@ -133,6 +138,10 @@ defmodule GenAgent.Backends.CodexExecutableConformanceTest do
     assert "fixture_feature" in resume_args
     assert "other_feature" in resume_args
     assert "/fixture/image.png" in resume_args
+
+    assert Enum.chunk_every(resume_args, 2, 1, :discard)
+           |> Enum.member?(["--output-schema", "/fixture/response.json"])
+
     assert "follow-up prompt" == List.last(resume_args)
     assert Enum.any?(resume_args, &String.contains?(&1, "approval_policy"))
     assert Enum.any?(resume_args, &String.contains?(&1, "mcp_servers.fixture.enabled=false"))

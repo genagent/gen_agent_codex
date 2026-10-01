@@ -79,7 +79,7 @@ defmodule GenAgent.Backends.CodexStreamingTest do
   end
 
   test "options that cannot be preserved on resume fail at startup" do
-    for option <- [:cd, :add_dirs, :search, :output_schema] do
+    for option <- [:cd, :add_dirs, :search] do
       assert {:error, {:unsupported_resume_option, ^option}} =
                Codex.start_session([{option, "fixture"}])
     end
