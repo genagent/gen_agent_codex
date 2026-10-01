@@ -1,5 +1,11 @@
 # GenAgentCodex
 
+> **Source moved:** Active development now lives in
+> [`genagent/gen_agent/integrations/codex`](https://github.com/genagent/gen_agent/tree/main/integrations/codex).
+> This repository retains its historical issues, pull requests, and tags.
+> The Hex package and public modules keep their names. Please file new issues
+> and pull requests in [`genagent/gen_agent`](https://github.com/genagent/gen_agent).
+
 [![CI](https://github.com/genagent/gen_agent_codex/actions/workflows/ci.yml/badge.svg)](https://github.com/genagent/gen_agent_codex/actions/workflows/ci.yml)
 [![Hex.pm](https://img.shields.io/hexpm/v/gen_agent_codex.svg)](https://hex.pm/packages/gen_agent_codex)
 [![Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/gen_agent_codex)
